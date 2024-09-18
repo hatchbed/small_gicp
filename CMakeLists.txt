@@ -22,7 +22,6 @@ option(BUILD_PYTHON_BINDINGS "Build python bindings" OFF)
 option(ENABLE_COVERAGE "Enable coverage" OFF)
 
 # Dependency options
-set(BUILD_WITH_OPENMP "auto" CACHE STRING "Build with OpenMP")
 option(BUILD_WITH_TBB "Build with TBB" OFF)
 option(BUILD_WITH_PCL "Build with PCL (required for benchmark and test only)" OFF)
 option(BUILD_WITH_FAST_GICP "Build with fast_gicp (required for benchmark and test only)" OFF)
@@ -55,12 +54,7 @@ if(NOT Eigen3_FOUND)
   )
 endif()
 
-if(BUILD_WITH_OPENMP STREQUAL "auto")
-  find_package(OpenMP)
-  set(BUILD_WITH_OPENMP ${OpenMP_FOUND})
-elseif(BUILD_WITH_OPENMP)
-  find_package(OpenMP REQUIRED)
-endif()
+find_package(OpenMP REQUIRED)
 
 if (BUILD_WITH_TBB)
   find_package(TBB REQUIRED)
@@ -135,7 +129,7 @@ if(BUILD_HELPER)
   )
   target_link_libraries(small_gicp PUBLIC
     Eigen3::Eigen
-    $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
+    OpenMP::OpenMP_CXX
   )
 endif()
 
@@ -165,115 +159,9 @@ if(BUILD_PYTHON_BINDINGS)
   )
   target_link_libraries(small_gicp_python PUBLIC
     Eigen3::Eigen
-    $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
+    OpenMP::OpenMP_CXX
   )
   set_target_properties(small_gicp_python PROPERTIES OUTPUT_NAME small_gicp)
-endif()
-
-###############
-## Benchmark ##
-###############
-if(BUILD_BENCHMARKS)
-  # Odometry benchmark
-  add_executable(odometry_benchmark
-    src/small_gicp/benchmark/benchmark_odom.cpp
-    src/benchmark/odometry_benchmark_pcl.cpp
-    src/benchmark/odometry_benchmark_fast_gicp.cpp
-    src/benchmark/odometry_benchmark_fast_vgicp.cpp
-    src/benchmark/odometry_benchmark_small_gicp.cpp
-    src/benchmark/odometry_benchmark_small_gicp_pcl.cpp
-    src/benchmark/odometry_benchmark_small_gicp_omp.cpp
-    src/benchmark/odometry_benchmark_small_vgicp_omp.cpp
-    src/benchmark/odometry_benchmark_small_gicp_tbb.cpp
-    src/benchmark/odometry_benchmark_small_vgicp_tbb.cpp
-    src/benchmark/odometry_benchmark_small_gicp_model_tbb.cpp
-    src/benchmark/odometry_benchmark_small_gicp_model_omp.cpp
-    src/benchmark/odometry_benchmark_small_vgicp_model_tbb.cpp
-    src/benchmark/odometry_benchmark_small_vgicp_model_omp.cpp
-    src/benchmark/odometry_benchmark_small_gicp_tbb_flow.cpp
-    src/benchmark/odometry_benchmark.cpp
-  )
-  target_include_directories(odometry_benchmark PUBLIC
-    ${FAST_GICP_INCLUDE_DIR}
-  )
-  target_link_libraries(odometry_benchmark PRIVATE
-    fmt::fmt
-    Eigen3::Eigen
-    $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
-    $<TARGET_NAME_IF_EXISTS:Iridescence::Iridescence>
-    $<TARGET_NAME_IF_EXISTS:TBB::tbb>
-    $<TARGET_NAME_IF_EXISTS:TBB::tbbmalloc>
-    $<TARGET_NAME_IF_EXISTS:PCL::PCL>
-  )
-
-  # KdTree construction benchmark
-  add_executable(kdtree_benchmark
-    src/benchmark/kdtree_benchmark.cpp
-  )
-  target_link_libraries(kdtree_benchmark PRIVATE
-    fmt::fmt
-    Eigen3::Eigen
-    $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
-    $<TARGET_NAME_IF_EXISTS:TBB::tbb>
-    $<TARGET_NAME_IF_EXISTS:TBB::tbbmalloc>
-  )
-
-  # Downsampling benchmark
-  add_executable(downsampling_benchmark
-    src/benchmark/downsampling_benchmark.cpp
-  )
-  target_link_libraries(downsampling_benchmark PRIVATE
-    fmt::fmt
-    Eigen3::Eigen
-    $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
-    $<TARGET_NAME_IF_EXISTS:TBB::tbb>
-    $<TARGET_NAME_IF_EXISTS:TBB::tbbmalloc>
-    $<TARGET_NAME_IF_EXISTS:PCL::PCL>
-  )
-endif()
-
-#############
-## Example ##
-#############
-if(BUILD_EXAMPLES)
-  file(GLOB EXAMPLE_SOURCES "src/example/*.cpp")
-  foreach(EXAMPLE_SOURCE ${EXAMPLE_SOURCES})
-    get_filename_component(EXAMPLE_NAME ${EXAMPLE_SOURCE} NAME_WE)
-    add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCE})
-    target_link_libraries(${EXAMPLE_NAME} PRIVATE
-      small_gicp
-      fmt::fmt
-      TBB::tbb
-      TBB::tbbmalloc
-      PCL::PCL
-    )
-  endforeach()
-endif()
-
-##########
-## Test ##
-##########
-if(BUILD_TESTS)
-  find_package(GTest REQUIRED)
-
-  enable_testing()
-  file(GLOB TEST_SOURCES "src/test/*.cpp")
-  # Generate test target for each test source file
-  foreach(TEST_SOURCE ${TEST_SOURCES})
-    get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
-    add_executable(${TEST_NAME} ${TEST_SOURCE})
-    target_link_libraries(${TEST_NAME} PRIVATE
-      small_gicp
-      fmt::fmt
-      GTest::gtest_main
-      TBB::tbb
-      TBB::tbbmalloc
-      PCL::PCL
-      OpenMP::OpenMP_CXX
-    )
-
-    gtest_discover_tests(${TEST_NAME} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-  endforeach()
 endif()
 
 #############
